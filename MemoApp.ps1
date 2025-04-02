@@ -1,6 +1,12 @@
-﻿# ----------------------------
+# ----------------------------
 # MemoApp.ps1
 # ----------------------------
+
+# コンソールのコードページを UTF-8 に変更（必要なら）
+chcp 65001
+
+# 出力エンコーディングの設定
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 # 必要な .NET アセンブリの読み込み
 Add-Type -AssemblyName PresentationFramework
@@ -19,16 +25,18 @@ $global:ChatGPT_ApiUrl = "https://api.example.com/chatgpt4o-mini"   # 仮のURL
 $global:ChatGPT_ApiKey = "YOUR_API_KEY_HERE"
 
 # -----------------------------------
-# 関数: Markdown を HTML に変換
+# 関数: Markdown を HTML に変換（エンコーディング指定付き）
 function Convert-MarkdownToHtml {
     param(
         [string]$Markdown
     )
     if ([string]::IsNullOrWhiteSpace($Markdown)) {
-        return "<p>(No Content)</p>"
+        return "<html><head><meta charset='utf-8'></head><body>(No Content)</body></html>"
     }
-    # Markdig.Markdown の静的メソッドを呼び出す
-    return [Markdig.Markdown]::ToHtml($Markdown)
+    # Markdig.Markdown の静的メソッドを用いて本文部分を生成
+    $htmlBody = [Markdig.Markdown]::ToHtml($Markdown)
+    # HTML全体をラップし、UTF-8 を明示
+    return "<html><head><meta charset='utf-8'></head><body>$htmlBody</body></html>"
 }
 
 # -----------------------------------
@@ -180,7 +188,7 @@ function Show-EditWindow {
     # プレビュー更新用のスクリプトブロック
     $updatePreview = {
         $html = Convert-MarkdownToHtml -Markdown $txtContent.Text
-        # WebBrowser に HTML を表示 (NavigateToString は UI スレッドで実行)
+        # WebBrowser に HTML を表示（UI スレッドで実行）
         $wbPreview.NavigateToString($html)
     }
     # イベントハンドラ: テキスト変更時にプレビュー更新
@@ -195,7 +203,7 @@ function Show-EditWindow {
         }
     })
 
-    # ボタン: 過去メモ参照 (SelectMemo ウィンドウを呼び出す)
+    # ボタン: 過去メモ参照 (SelectMemo ウィンドウ)
     $btnSelectPast.Add_Click({
         $selectWindow = Load-XamlWindow -Xaml $selectMemoXaml
         $lbPastNotes = $selectWindow.FindName("lbPastNotes")
@@ -205,7 +213,7 @@ function Show-EditWindow {
         # 過去メモ一覧を設定
         $lbPastNotes.ItemsSource = $global:Notes
 
-        # イベント: OK ボタン
+        # OK ボタンのイベント
         $btnSelect.Add_Click({
             if ($lbPastNotes.SelectedItem -ne $null) {
                 # 選択されたメモの内容を本文末尾に追加（参考情報として）
@@ -227,7 +235,7 @@ function Show-EditWindow {
 
     # ボタン: 間埋め機能
     $btnFillGap.Add_Click({
-        # シンプルに、最初の空行を探して前後の行を取得
+        # 最初の空行を探して前後の行を取得
         $lines = $txtContent.Text -split "`n"
         $gapIndex = $null
         for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -288,7 +296,7 @@ function Show-MainWindow {
     $btnDelete = $mainWindow.FindName("btnDelete")
     $lbNotes = $mainWindow.FindName("lbNotes")
 
-    # メモ一覧更新の関数
+    # メモ一覧更新用関数
     function Update-NoteList {
         $lbNotes.ItemsSource = $null
         $lbNotes.ItemsSource = $global:Notes
@@ -296,13 +304,12 @@ function Show-MainWindow {
 
     # 新規作成ボタン
     $btnNew.Add_Click({
-        # 新規メモ（空のオブジェクトを PSCustomObject で作成）
+        # 新規メモ（PSCustomObject で作成）
         $newNote = [PSCustomObject]@{
             Title = "新規メモ"
             Content = ""
         }
         $global:Notes += $newNote
-
         # 編集ウィンドウを開く
         $noteRef = [ref]$newNote
         Show-EditWindow -Note $noteRef

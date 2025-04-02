@@ -1,4 +1,4 @@
-# ----------------------------
+﻿# ----------------------------
 # MemoApp.ps1
 # ----------------------------
 
@@ -296,7 +296,7 @@ function Show-MainWindow {
 
     # 新規作成ボタン
     $btnNew.Add_Click({
-        # 新規メモ（空のオブジェクトを Hashtable で作成）
+        # 新規メモ（空のオブジェクトを PSCustomObject で作成）
         $newNote = [PSCustomObject]@{
             Title = "新規メモ"
             Content = ""
